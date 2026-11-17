@@ -49,54 +49,73 @@ public class MysticLeavesBlock extends Block {
     }
 
     @Override
-    public void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource source) {
-        level.setBlock(pos, updateDistance(state, level, pos), 3);
+    public void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+        BlockState updatedState = updateDistance(state, level, pos);
+
+        if (updatedState.getValue(DISTANCE) != state.getValue(DISTANCE)) {
+            level.setBlock(pos, updatedState, 3);
+        }
     }
 
-    private static BlockState updateDistance(BlockState state, LevelAccessor accessor, BlockPos pos) {
-        int i = 16;
-        BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
+    private static BlockState updateDistance(
+            BlockState state,
+            LevelAccessor level,
+            BlockPos pos
+    ) {
+        int distance = 16;
 
         for (Direction direction : Direction.values()) {
-            mutablePos.setWithOffset(pos, direction);
-            i = Math.min(i, getDistanceAt(accessor.getBlockState(mutablePos)) + 1);
-            if (i == 1) {
+            BlockPos neighborPos = pos.relative(direction);
+            BlockState neighborState = level.getBlockState(neighborPos);
+
+            distance = Math.min(
+                    distance,
+                    getDistanceAt(neighborState) + 1
+            );
+
+            if (distance == 1) {
                 break;
             }
         }
 
-        return state.setValue(DISTANCE, i);
+        return state.setValue(DISTANCE, Math.min(distance, 16));
     }
 
     private static int getDistanceAt(BlockState state) {
         return getOptionalDistanceAt(state).orElse(16);
     }
-
     @Override
-    public void randomTick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-        if (!(Boolean)state.getValue(PERSISTENT) && state.getValue(DISTANCE) == 16) {
-            dropResources(state, level, pos);
+    public void randomTick(
+            BlockState state,
+            ServerLevel level,
+            BlockPos pos,
+            RandomSource random
+    ) {
+        if (!state.getValue(PERSISTENT) && state.getValue(DISTANCE) >= 8) {
+            dropResources(state, level, pos, level.getBlockEntity(pos));
             level.removeBlock(pos, false);
         }
     }
 
     @Override
     public boolean isRandomlyTicking(BlockState state) {
-        return state.getValue(DISTANCE) == 16 && !(Boolean)state.getValue(PERSISTENT);
+        return !state.getValue(PERSISTENT) && state.getValue(DISTANCE) >= 8;
     }
 
     public VoxelShape getBlockSupportShape(BlockState state, BlockGetter getter, BlockPos pos) {
         return Shapes.empty();
     }
 
-    public BlockState updateShape(BlockState state, Direction direction, BlockState state2, LevelAccessor accessor, BlockPos pos, BlockPos pos2) {
+    @Override
+    public BlockState updateShape(BlockState state, Direction direction, BlockState neighborState, LevelAccessor level, BlockPos pos, BlockPos neighborPos) {
         if (state.getValue(WATERLOGGED)) {
-            accessor.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(accessor));
+            level.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
         }
 
-        int i = getDistanceAt(state2) + 1;
-        if (i != 1 || state.getValue(DISTANCE) != i) {
-            accessor.scheduleTick(pos, this, 1);
+        int distance = getDistanceAt(neighborState) + 1;
+
+        if (distance != state.getValue(DISTANCE)) {
+            level.scheduleTick(pos, this, 1);
         }
 
         return state;
@@ -127,5 +146,4 @@ public class MysticLeavesBlock extends Block {
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(DISTANCE, PERSISTENT, WATERLOGGED);
     }
-
 }
