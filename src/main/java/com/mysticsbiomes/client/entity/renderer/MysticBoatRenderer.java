@@ -25,7 +25,7 @@ public class MysticBoatRenderer extends BoatRenderer {
 
     @Override
     public Pair<ResourceLocation, BoatModel> getModelWithLocation(Boat boat) {
-        return this.boatResources.get(boat.getBoatType());
+        return this.boatResources.get(((MysticBoat) boat).getModel());
     }
 
     private static String getTextureLocation(MysticBoat.Type type, boolean hasChest) {

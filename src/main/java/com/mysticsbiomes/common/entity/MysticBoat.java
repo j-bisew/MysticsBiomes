@@ -86,7 +86,7 @@ public class MysticBoat extends Boat {
 
                 this.resetFallDistance();
             } else if (!this.level.getFluidState(this.blockPosition().below()).is(FluidTags.WATER) && y < 0.0D) {
-                this.fallDistance -= (float)y;
+                this.fallDistance -= (float) y;
             }
         }
     }
@@ -133,6 +133,7 @@ public class MysticBoat extends Boat {
             return this.planks;
         }
 
+        @Override
         public String toString() {
             return this.name;
         }
